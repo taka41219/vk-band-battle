@@ -1,0 +1,119 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>V系バトルジェネレーター</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #0b0b0b, #1a1a1a);
+      color: #fff;
+      margin: 0;
+      padding: 16px;
+    }
+    h1 {
+      text-align: center;
+      color: #7ecbff;
+      font-size: 1.4rem;
+      margin-bottom: 20px;
+    }
+    .box {
+      background: #111;
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 0 12px rgba(0,0,0,0.6);
+    }
+    h2 {
+      font-size: 1rem;
+      margin-bottom: 8px;
+      color: #ccc;
+    }
+    input {
+      width: 100%;
+      font-size: 16px;
+      padding: 12px;
+      border-radius: 12px;
+      border: none;
+      outline: none;
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      font-size: 18px;
+      border-radius: 20px;
+      border: none;
+      background: linear-gradient(90deg, #5fa9ff, #9b6bff);
+      color: #fff;
+      font-weight: bold;
+      cursor: pointer;
+      margin-bottom: 16px;
+    }
+    .log {
+      background: #000;
+      border-radius: 16px;
+      padding: 16px;
+      white-space: pre-line;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+    .power {
+      font-size: 1.2rem;
+      margin: 6px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎸 ヴィジュアル系バンド<br>戦闘力バトル 🎸</h1>
+
+  <div class="box">
+    <h2>🖤 あなたのバンド</h2>
+    <input id="player" placeholder="バンド名を入力" />
+  </div>
+
+  <div class="box">
+    <h2>💀 対戦バンド</h2>
+    <input id="cpu" placeholder="CPUバンド名を入力" />
+  </div>
+
+  <button onclick="battle()">🔥 バトル開始 🔥</button>
+
+  <div class="box log" id="result">ここに結果が表示される…</div>
+
+  <script>
+    function calcPower(name) {
+      let power = 0;
+      for (let i = 0; i < name.length; i++) {
+        power += name.charCodeAt(i);
+      }
+      if (name.match(/[゛ー]/)) power += 500;
+      return power % 10000 + 1000;
+    }
+
+    function battle() {
+      const pName = document.getElementById('player').value.trim();
+      const cName = document.getElementById('cpu').value.trim();
+      if (!pName || !cName) return;
+
+      const pPower = calcPower(pName);
+      const cPower = calcPower(cName);
+
+      let log = `🖤 ${pName}\n戦闘力：${pPower}\n\n`;
+      log += `💀 ${cName}\n戦闘力：${cPower}\n\n`;
+
+      if (pPower > cPower) {
+        log += `🔥 勝者：${pName}！\n観客は熱狂の渦に包まれた…`;
+      } else if (pPower < cPower) {
+        log += `💀 勝者：${cName}！\n漆黒の夜が支配する…`;
+      } else {
+        log += `⚡ 引き分け！\n伝説のツーマンライブが幕を開けた…`;
+      }
+
+      document.getElementById('result').textContent = log;
+    }
+  </script>
+</body>
+</html>
+
