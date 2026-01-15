@@ -1,4 +1,3 @@
-
 <!DOCTYPE html><html lang="ja">
 <head>
   <meta charset="UTF-8" />
@@ -15,7 +14,8 @@
     h1 { text-align: center; color: #7ecbff; font-size: 1.4rem; }
     .box { background:#111; border-radius:16px; padding:16px; margin-bottom:16px; }
     input { width:100%; font-size:16px; padding:12px; border-radius:12px; border:none; margin-bottom:8px; }
-    button { width:100%; padding:14px; font-size:18px; border-radius:20px; border:none; background:linear-gradient(90deg,#5fa9ff,#9b6bff); color:#fff; font-weight:bold; margin-bottom:16px; }
+    button { width:100%; padding:14px; font-size:18px; border-radius:20px; border:none; background:linear-gradient(90deg,#5fa9ff,#9b6bff); color:#fff; font-weight:bold; margin-bottom:12px; }
+    .sub { background:#444; font-size:14px; }
     .log { background:#000; border-radius:16px; padding:16px; white-space:pre-line; }
     ul { padding-left:18px; }
     .admin { background:#300; margin-top:8px; padding:8px; border-radius:8px; }
@@ -31,7 +31,8 @@
   <h2>💀 対戦バンド</h2>
   <input id="cpu" placeholder="CPUバンド名を入力" />
 </div>
-<button onclick="battle()">🔥 バトル開始 🔥</button><div class="box log" id="result">ここに結果が表示される…</div><div class="box">
+<button onclick="battle()">🔥 バトル開始 🔥</button>
+<button class="sub" onclick="retire()">🏳️ リタイヤして記録する</button><div class="box log" id="result">ここに結果が表示される…</div><div class="box">
   <h2>🏆 戦闘力ランキング（上位5）</h2>
   <ul id="ranking"></ul>
 </div><div class="box">
@@ -42,7 +43,7 @@
   <input id="adminPass" placeholder="管理人パスワード" />
   <button onclick="adminLogin()">管理人ログイン</button>
 </div><script>
-  const ADMIN_PASSWORD = 'admin123'; // ★ここを変更してOK
+  const ADMIN_PASSWORD = 'admin123';
   let isAdmin = false;
 
   function calcPower(name) {
@@ -65,9 +66,7 @@
       alert('管理人モードON');
       renderRanking();
       renderStreakRanking();
-    } else {
-      alert('パスワードが違います');
-    }
+    } else alert('パスワードが違います');
   }
 
   function renderRanking() {
@@ -75,8 +74,7 @@
     ul.innerHTML = '';
     load('powerRank').forEach((r,i)=>{
       const li = document.createElement('li');
-      li.innerHTML = `${i+1}位：${r.band} / ${r.user}（${r.power}）` +
-        (isAdmin ? `<span class='del' onclick="delPower(${i})">[削除]</span>` : '');
+      li.innerHTML = `${i+1}位：${r.band} / ${r.user}（${r.power}）` + (isAdmin ? `<span class='del' onclick="delPower(${i})">[削除]</span>` : '');
       ul.appendChild(li);
     });
   }
@@ -86,22 +84,38 @@
     ul.innerHTML = '';
     load('streakRank').forEach((r,i)=>{
       const li = document.createElement('li');
-      li.innerHTML = `${i+1}位：${r.band} / ${r.user}（${r.streak}連勝）` +
-        (isAdmin ? `<span class='del' onclick="delStreak(${i})">[削除]</span>` : '');
+      li.innerHTML = `${i+1}位：${r.band} / ${r.user}（${r.streak}連勝）` + (isAdmin ? `<span class='del' onclick="delStreak(${i})">[削除]</span>` : '');
       ul.appendChild(li);
     });
   }
 
-  function delPower(i) {
-    const list = load('powerRank');
-    list.splice(i,1);
-    save('powerRank', list);
+  function delPower(i) { const l = load('powerRank'); l.splice(i,1); save('powerRank', l); renderRanking(); }
+  function delStreak(i) { const l = load('streakRank'); l.splice(i,1); save('streakRank', l); renderStreakRanking(); }
+
+  function checkAndSaveRecords() {
+    const bestPower = Number(localStorage.getItem('bestPower') || 0);
+    const bestStreak = Number(localStorage.getItem('bestStreak') || 0);
+    if (bestPower === 0 && bestStreak === 0) return;
+
+    const user = prompt('ランキング登録！ユーザーネームを入力');
+    if (!user) return;
+
+    if (bestPower > 0) {
+      let pr = load('powerRank');
+      pr.push({ band: localStorage.getItem('bestBand'), user, power: bestPower });
+      pr.sort((a,b)=>b.power-a.power);
+      save('powerRank', pr.slice(0,5));
+    }
+    if (bestStreak > 0) {
+      let sr = load('streakRank');
+      sr.push({ band: localStorage.getItem('bestBand'), user, streak: bestStreak });
+      sr.sort((a,b)=>b.streak-a.streak);
+      save('streakRank', sr.slice(0,5));
+    }
+
+    localStorage.removeItem('bestPower');
+    localStorage.removeItem('bestStreak');
     renderRanking();
-  }
-  function delStreak(i) {
-    const list = load('streakRank');
-    list.splice(i,1);
-    save('streakRank', list);
     renderStreakRanking();
   }
 
@@ -112,9 +126,9 @@
 
     const pPower = calcPower(p);
     const cPower = calcPower(c);
+    let streak = Number(localStorage.getItem('streak') || 0);
 
     let log = `🖤 ${p}\n戦闘力：${pPower}\n\n💀 ${c}\n戦闘力：${cPower}\n\n`;
-    let streak = Number(localStorage.getItem('streak') || 0);
 
     if (p === c) {
       log += '⚠️ 同名バンドのため記録対象外';
@@ -122,40 +136,22 @@
       log += '🔥 勝利！';
       streak++;
       localStorage.setItem('streak', streak);
-      checkStreakRank(p, streak);
-    } else if (pPower < cPower) {
+      localStorage.setItem('bestPower', Math.max(pPower, Number(localStorage.getItem('bestPower')||0)));
+      localStorage.setItem('bestStreak', Math.max(streak, Number(localStorage.getItem('bestStreak')||0)));
+      localStorage.setItem('bestBand', p);
+    } else {
       log += '💀 敗北…';
       localStorage.setItem('streak', 0);
-    } else {
-      log += '⚡ 引き分け';
+      checkAndSaveRecords();
     }
 
     document.getElementById('result').textContent = log;
-    checkPowerRank(p, pPower);
   }
 
-  function checkPowerRank(band, power) {
-    let list = load('powerRank');
-    if (list.length < 5 || power > list[list.length-1].power) {
-      const user = prompt('ランキング入り！ユーザーネームを入力');
-      if (!user) return;
-      list.push({ band, user, power });
-      list.sort((a,b)=>b.power-a.power);
-      save('powerRank', list.slice(0,5));
-      renderRanking();
-    }
-  }
-
-  function checkStreakRank(band, streak) {
-    let list = load('streakRank');
-    if (list.length < 5 || streak > list[list.length-1].streak) {
-      const user = prompt('連勝ランキング入り！ユーザーネームを入力');
-      if (!user) return;
-      list.push({ band, user, streak });
-      list.sort((a,b)=>b.streak-a.streak);
-      save('streakRank', list.slice(0,5));
-      renderStreakRanking();
-    }
+  function retire() {
+    checkAndSaveRecords();
+    localStorage.setItem('streak', 0);
+    document.getElementById('result').textContent = '🏳️ リタイヤしました。記録を保存しました。';
   }
 
   renderRanking();
