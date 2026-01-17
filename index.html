@@ -13,17 +13,13 @@
 </head>
 <body><h1>🎸 ヴィジュアル系バンド戦闘力バトル</h1><div class="box">
   <h2>プレイモード選択</h2>
-  <button onclick="selectMode('manual')">手動対戦</button>
-  <button onclick="selectMode('cpu')">CPU対戦（Wikipedia）</button>
-</div><div id="manualBox" class="box hidden">
-  <h3>手動対戦</h3>
-  <input id="player" placeholder="自分のバンド名"><br><br>
-  <input id="enemy" placeholder="対戦相手のバンド名"><br><br>
-  <button onclick="battleManual()">バトル開始</button>
-</div><div id="cpuBox" class="box hidden">
-  <h3>CPU対戦</h3>
-  <input id="playerCpu" placeholder="自分のバンド名"><br><br>
-  <button onclick="battleCPU()">CPUとバトル</button>
+  <button type="button" onclick="alert('manual'); selectMode('manual')">
+  手動対戦
+</button>
+
+<button type="button" onclick="alert('cpu'); selectMode('cpu')">
+  CPU対戦（Wikipedia）
+</button>
   <p id="cpuStatus"></p>
 </div><div id="result" class="box hidden"></div><script>
 let mode = '';
