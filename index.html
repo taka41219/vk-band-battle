@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ヴィジュアル系バンド戦闘力バトル</title>
+
 <style>
 body {
   font-family: sans-serif;
@@ -32,7 +33,7 @@ input {
   overflow-y: auto;
   text-align: left;
 }
-.hidden { display:none; }
+.hidden { display: none; }
 </style>
 </head>
 
@@ -40,11 +41,13 @@ input {
 
 <h1>🎸 ヴィジュアル系バンド<br>戦闘力バトル</h1>
 
+<!-- モード選択 -->
 <div id="modeScreen">
   <button onclick="selectMode('manual')">手動対戦</button>
   <button onclick="selectMode('cpu')">CPU対戦</button>
 </div>
 
+<!-- バトル画面 -->
 <div id="battleScreen">
   <h2 id="modeLabel"></h2>
 
@@ -71,6 +74,14 @@ let turn = 0;
 let player, enemy;
 let winCount = 0;
 
+const cpuBands = [
+  "X JAPAN",
+  "LUNA SEA",
+  "DIR EN GREY",
+  "MALICE MIZER",
+  "the GazettE"
+];
+
 function rand(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -78,120 +89,25 @@ function rand(min, max) {
 function createBand(name) {
   return {
     name,
-    hp: rand(1,10000),
-    atk: rand(100,9999),
-    def: rand(1,5000),
-    spd: rand(1,100)
+    hp: rand(1, 10000),
+    atk: rand(100, 9999),
+    def: rand(1, 5000),
+    spd: rand(1, 100)
   };
 }
 
+/* ===== モード選択 ===== */
 function selectMode(m) {
   mode = m;
+
   document.getElementById("modeScreen").style.display = "none";
   document.getElementById("battleScreen").style.display = "block";
+
   document.getElementById("modeLabel").textContent =
     m === "manual" ? "手動対戦モード" : "CPU対戦モード";
-}
 
-function startBattle() {
-  const pName = document.getElementById("playerBand").value.trim();
-  let eName = document.getElementById("enemyBand").value.trim();
-
-  if (!pName) {
-    alert("自分のバンド名を入力してね！");
-    return;
-  }
-
-  if (mode === "cpu") {
-    const cpuBands = ["X JAPAN","LUNA SEA","DIR EN GREY","MALICE MIZER","the GazettE"];
-    eName = cpuBands[rand(0,cpuBands.length-1)];
-  }
-
-  if (!eName) {
-    alert("対戦相手のバンド名を入力してね！");
-    return;
-  }
-
-  player = createBand(pName);
-  enemy = createBand(eName);
-  turn = 0;
-
-  document.getElementById("log").innerHTML = "";
-  document.getElementById("enemyBand").value = "";
-  document.getElementById("nameEntry").classList.add("hidden");
-
-  log("🔥 バトル開始！");
-  updateStatus();
-
-  battleLoop();
-}
-
-function battleLoop() {
-  if (player.hp <= 0 || enemy.hp <= 0) {
-    endBattle();
-    return;
-  }
-
-  turn++;
-  if (turn > 5) {
-    log("……激戦の末、勝敗が決した！");
-    player.hp = player.hp > enemy.hp ? player.hp : 0;
-    enemy.hp = enemy.hp > player.hp ? enemy.hp : 0;
-    endBattle();
-    return;
-  }
-
-  const first = player.spd >= enemy.spd ? player : enemy;
-  const second = first === player ? enemy : player;
-
-  attack(first, second);
-  if (second.hp > 0) attack(second, first);
-
-  updateStatus();
-  setTimeout(battleLoop, 800);
-}
-
-function attack(a, d) {
-  let dmg = Math.max(1, a.atk - d.def);
-  d.hp -= dmg;
-  log(`${a.name} の攻撃！ ${dmg} ダメージ`);
-}
-
-function updateStatus() {
-  document.getElementById("status").innerHTML = `
-  <p>${player.name} HP:${Math.max(0,player.hp)}</p>
-  <p>${enemy.name} HP:${Math.max(0,enemy.hp)}</p>`;
-}
-
-function log(text) {
-  const l = document.getElementById("log");
-  l.innerHTML += text + "<br>";
-  l.scrollTop = l.scrollHeight;
-}
-
-function endBattle() {
-  if (player.hp > 0 && enemy.hp <= 0) {
-    log("🎉 勝利！");
-    if (player.name !== enemy.name) winCount++;
+  // 🔥 ここが修正点
+  if (m === "cpu") {
+    document.getElementById("enemyBand").style.display = "none";
   } else {
-    log("💀 敗北…");
-    document.getElementById("nameEntry").classList.remove("hidden");
-  }
-}
-
-function retire() {
-  log("🏳️ リタイアしました");
-  document.getElementById("nameEntry").classList.remove("hidden");
-}
-
-function saveRecord() {
-  const name = document.getElementById("userName").value.trim();
-  if (!name) return alert("名前を入力してね！");
-  alert(`登録完了！\n${name}\n連勝：${winCount}`);
-  winCount = 0;
-  document.getElementById("nameEntry").classList.add("hidden");
-}
-</script>
-
-</body>
-</html>
+    document.getElementById("enemyBand").style.display = "inline-block";
