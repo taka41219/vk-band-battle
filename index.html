@@ -1,95 +1,197 @@
-<!DOCTYPE html><html lang="ja">
+<!DOCTYPE html>
+<html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ヴィジュアル系バンド戦闘力バトル</title>
-  <style>
-    body { font-family: sans-serif; background:#111; color:#eee; text-align:center; }
-    button { padding:10px 20px; margin:5px; font-size:16px; }
-    input { padding:8px; font-size:16px; }
-    .hidden { display:none; }
-    .box { margin:20px auto; padding:15px; border:1px solid #444; max-width:400px; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ヴィジュアル系バンド戦闘力バトル</title>
+<style>
+body {
+  font-family: sans-serif;
+  background: #111;
+  color: #fff;
+  text-align: center;
+  padding: 10px;
+}
+button {
+  padding: 10px 20px;
+  margin: 5px;
+  font-size: 16px;
+}
+input {
+  padding: 8px;
+  font-size: 16px;
+  width: 80%;
+  margin: 5px;
+}
+#battleScreen { display: none; }
+#log {
+  background: #000;
+  padding: 10px;
+  margin-top: 10px;
+  height: 200px;
+  overflow-y: auto;
+  text-align: left;
+}
+.hidden { display:none; }
+</style>
 </head>
-<body><h1>🎸 ヴィジュアル系バンド戦闘力バトル</h1><div class="box">
-  <h2>プレイモード選択</h2>
-  <button type="button" onclick="alert('manual'); selectMode('manual')">
-  手動対戦
-</button>
 
-<button type="button" onclick="alert('cpu'); selectMode('cpu')">
-  CPU対戦（Wikipedia）
-</button>
-  <p id="cpuStatus"></p>
-</div><div id="result" class="box hidden"></div><script>
-let mode = '';
+<body>
 
-function selectMode(m) {
-  mode = m;
-  document.getElementById('manualBox').classList.add('hidden');
-  document.getElementById('cpuBox').classList.add('hidden');
-  document.getElementById('result').classList.add('hidden');
-  if (m === 'manual') document.getElementById('manualBox').classList.remove('hidden');
-  if (m === 'cpu') document.getElementById('cpuBox').classList.remove('hidden');
+<h1>🎸 ヴィジュアル系バンド<br>戦闘力バトル</h1>
+
+<div id="modeScreen">
+  <button onclick="selectMode('manual')">手動対戦</button>
+  <button onclick="selectMode('cpu')">CPU対戦</button>
+</div>
+
+<div id="battleScreen">
+  <h2 id="modeLabel"></h2>
+
+  <input id="playerBand" placeholder="自分のバンド名">
+  <input id="enemyBand" placeholder="対戦相手のバンド名">
+
+  <div>
+    <button onclick="startBattle()">バトル開始</button>
+    <button onclick="retire()">リタイア</button>
+  </div>
+
+  <div id="status"></div>
+  <div id="log"></div>
+
+  <div id="nameEntry" class="hidden">
+    <input id="userName" placeholder="ユーザーネーム">
+    <button onclick="saveRecord()">ランキング登録</button>
+  </div>
+</div>
+
+<script>
+let mode = "";
+let turn = 0;
+let player, enemy;
+let winCount = 0;
+
+function rand(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function createStatus(name) {
-  const seed = name.split('').reduce((a,c)=>a+c.charCodeAt(0),0);
+function createBand(name) {
   return {
     name,
-    hp: (seed * 13) % 10000 + 1,
-    atk: (seed * 17) % 9900 + 100,
-    def: (seed * 19) % 5000 + 1,
-    spd: (seed * 23) % 100 + 1
+    hp: rand(1,10000),
+    atk: rand(100,9999),
+    def: rand(1,5000),
+    spd: rand(1,100)
   };
 }
 
-function battleRPG(pName, eName) {
-  let p = createStatus(pName);
-  let e = createStatus(eName);
-  let log = [];
-  let turn = 1;
+function selectMode(m) {
+  mode = m;
+  document.getElementById("modeScreen").style.display = "none";
+  document.getElementById("battleScreen").style.display = "block";
+  document.getElementById("modeLabel").textContent =
+    m === "manual" ? "手動対戦モード" : "CPU対戦モード";
+}
 
-  let first = p.spd >= e.spd ? p : e;
-  let second = first === p ? e : p;
+function startBattle() {
+  const pName = document.getElementById("playerBand").value.trim();
+  let eName = document.getElementById("enemyBand").value.trim();
 
-  log.push(`⚡ 素早さ判定：${first.name} が先制！`);
-
-  while (p.hp > 0 && e.hp > 0) {
-    if (turn > 5) {
-      log.push('⏩ 激戦が続いたため、勝負は一気に決着へ…');
-      break;
-    }
-
-    let dmg1 = Math.max(1, first.atk - second.def);
-    second.hp -= dmg1;
-    log.push(`Turn ${turn}: ${first.name} の攻撃 → ${dmg1} ダメージ`);
-    if (second.hp <= 0) break;
-
-    let dmg2 = Math.max(1, second.atk - first.def);
-    first.hp -= dmg2;
-    log.push(`${second.name} の反撃 → ${dmg2} ダメージ`);
-
-    turn++;
+  if (!pName) {
+    alert("自分のバンド名を入力してね！");
+    return;
   }
 
-  let result;
-  if (p.hp === e.hp) result = '🤝 引き分け';
-  else if (p.hp > e.hp) result = `🏆 ${p.name} の勝利！`;
-  else result = `💀 ${p.name} の敗北…`;
+  if (mode === "cpu") {
+    const cpuBands = ["X JAPAN","LUNA SEA","DIR EN GREY","MALICE MIZER","the GazettE"];
+    eName = cpuBands[rand(0,cpuBands.length-1)];
+  }
 
-  const box = document.getElementById('result');
-  box.innerHTML = `<h3>結果</h3><pre>${log.join('
-')}</pre><br>${result}`;box.classList.remove('hidden'); }
+  if (!eName) {
+    alert("対戦相手のバンド名を入力してね！");
+    return;
+  }
 
-function battleManual() { const p = player.value.trim(); const e = enemy.value.trim(); if (!p || !e) return alert('名前を入力してね'); if (p === e) return alert('同名バトルはできません'); battleRPG(p, e); enemy.value = ''; }
+  player = createBand(pName);
+  enemy = createBand(eName);
+  turn = 0;
 
-async function battleCPU() { const p = playerCpu.value.trim(); if (!p) return alert('名前を入力してね'); const status = document.getElementById('cpuStatus'); status.textContent = '📡 Wikipedia接続中…';
+  document.getElementById("log").innerHTML = "";
+  document.getElementById("enemyBand").value = "";
+  document.getElementById("nameEntry").classList.add("hidden");
 
-try { const url = 'https://ja.wikipedia.org/w/api.php?action=query&list=search&srsearch=ヴィジュアル系 バンド&format=json&origin=*'; const res = await fetch(url); const data = await res.json(); const list = data.query.search; const cpu = list[Math.floor(Math.random()*list.length)].title; status.textContent = 敵バンド出現！「${cpu}」; battleRPG(p, cpu); } catch { status.textContent = '❌ 取得失敗'; } } </script>
+  log("🔥 バトル開始！");
+  updateStatus();
+
+  battleLoop();
+}
+
+function battleLoop() {
+  if (player.hp <= 0 || enemy.hp <= 0) {
+    endBattle();
+    return;
+  }
+
+  turn++;
+  if (turn > 5) {
+    log("……激戦の末、勝敗が決した！");
+    player.hp = player.hp > enemy.hp ? player.hp : 0;
+    enemy.hp = enemy.hp > player.hp ? enemy.hp : 0;
+    endBattle();
+    return;
+  }
+
+  const first = player.spd >= enemy.spd ? player : enemy;
+  const second = first === player ? enemy : player;
+
+  attack(first, second);
+  if (second.hp > 0) attack(second, first);
+
+  updateStatus();
+  setTimeout(battleLoop, 800);
+}
+
+function attack(a, d) {
+  let dmg = Math.max(1, a.atk - d.def);
+  d.hp -= dmg;
+  log(`${a.name} の攻撃！ ${dmg} ダメージ`);
+}
+
+function updateStatus() {
+  document.getElementById("status").innerHTML = `
+  <p>${player.name} HP:${Math.max(0,player.hp)}</p>
+  <p>${enemy.name} HP:${Math.max(0,enemy.hp)}</p>`;
+}
+
+function log(text) {
+  const l = document.getElementById("log");
+  l.innerHTML += text + "<br>";
+  l.scrollTop = l.scrollHeight;
+}
+
+function endBattle() {
+  if (player.hp > 0 && enemy.hp <= 0) {
+    log("🎉 勝利！");
+    if (player.name !== enemy.name) winCount++;
+  } else {
+    log("💀 敗北…");
+    document.getElementById("nameEntry").classList.remove("hidden");
+  }
+}
+
+function retire() {
+  log("🏳️ リタイアしました");
+  document.getElementById("nameEntry").classList.remove("hidden");
+}
+
+function saveRecord() {
+  const name = document.getElementById("userName").value.trim();
+  if (!name) return alert("名前を入力してね！");
+  alert(`登録完了！\n${name}\n連勝：${winCount}`);
+  winCount = 0;
+  document.getElementById("nameEntry").classList.add("hidden");
+}
+</script>
 
 </body>
 </html>
-<script>
-  alert("JavaScriptは読み込まれています！");
-</script>
