@@ -1,160 +1,96 @@
 <!DOCTYPE html><html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>V系バトルジェネレーター</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ヴィジュアル系バンド戦闘力バトル</title>
   <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: linear-gradient(180deg, #0b0b0b, #1a1a1a);
-      color: #fff;
-      margin: 0;
-      padding: 16px;
-    }
-    h1 { text-align: center; color: #7ecbff; font-size: 1.4rem; }
-    .box { background:#111; border-radius:16px; padding:16px; margin-bottom:16px; }
-    input { width:100%; font-size:16px; padding:12px; border-radius:12px; border:none; margin-bottom:8px; }
-    button { width:100%; padding:14px; font-size:18px; border-radius:20px; border:none; background:linear-gradient(90deg,#5fa9ff,#9b6bff); color:#fff; font-weight:bold; margin-bottom:12px; }
-    .sub { background:#444; font-size:14px; }
-    .log { background:#000; border-radius:16px; padding:16px; white-space:pre-line; }
-    ul { padding-left:18px; }
-    .admin { background:#300; margin-top:8px; padding:8px; border-radius:8px; }
-    .del { color:#ff7777; cursor:pointer; margin-left:8px; }
+    body { font-family: sans-serif; background:#111; color:#eee; text-align:center; }
+    button { padding:10px 20px; margin:5px; font-size:16px; }
+    input { padding:8px; font-size:16px; }
+    .hidden { display:none; }
+    .box { margin:20px auto; padding:15px; border:1px solid #444; max-width:400px; }
   </style>
 </head>
-<body>
-<h1>🎸 ヴィジュアル系バンド<br>戦闘力バトル 🎸</h1><div class="box">
-  <h2>🖤 あなたのバンド</h2>
-  <input id="player" placeholder="バンド名を入力" />
-</div>
-<div class="box">
-  <h2>💀 対戦バンド</h2>
-  <input id="cpu" placeholder="CPUバンド名を入力" />
-</div>
-<button onclick="battle()">🔥 バトル開始 🔥</button>
-<button class="sub" onclick="retire()">🏳️ リタイヤして記録する</button><div class="box log" id="result">ここに結果が表示される…</div><div class="box">
-  <h2>🏆 戦闘力ランキング（上位5）</h2>
-  <ul id="ranking"></ul>
-</div><div class="box">
-  <h2>🔥 連勝ランキング（上位5）</h2>
-  <ul id="streakRank"></ul>
-</div><div class="box admin">
-  <h2>🔑 管理人モード</h2>
-  <input id="adminPass" placeholder="管理人パスワード" />
-  <button onclick="adminLogin()">管理人ログイン</button>
-</div><script>
-  const ADMIN_PASSWORD = 'admin123';
-  let isAdmin = false;
+<body><h1>🎸 ヴィジュアル系バンド戦闘力バトル</h1><div class="box">
+  <h2>プレイモード選択</h2>
+  <button onclick="selectMode('manual')">手動対戦</button>
+  <button onclick="selectMode('cpu')">CPU対戦（Wikipedia）</button>
+</div><div id="manualBox" class="box hidden">
+  <h3>手動対戦</h3>
+  <input id="player" placeholder="自分のバンド名"><br><br>
+  <input id="enemy" placeholder="対戦相手のバンド名"><br><br>
+  <button onclick="battleManual()">バトル開始</button>
+</div><div id="cpuBox" class="box hidden">
+  <h3>CPU対戦</h3>
+  <input id="playerCpu" placeholder="自分のバンド名"><br><br>
+  <button onclick="battleCPU()">CPUとバトル</button>
+  <p id="cpuStatus"></p>
+</div><div id="result" class="box hidden"></div><script>
+let mode = '';
 
-  function calcPower(name) {
-    let power = 0;
-    for (let i = 0; i < name.length; i++) power += name.charCodeAt(i);
-    if (name.match(/[゛ー]/)) power += 500;
-    return power % 10000 + 1000;
-  }
+function selectMode(m) {
+  mode = m;
+  document.getElementById('manualBox').classList.add('hidden');
+  document.getElementById('cpuBox').classList.add('hidden');
+  document.getElementById('result').classList.add('hidden');
+  if (m === 'manual') document.getElementById('manualBox').classList.remove('hidden');
+  if (m === 'cpu') document.getElementById('cpuBox').classList.remove('hidden');
+}
 
-  function load(key) {
-    return JSON.parse(localStorage.getItem(key) || '[]');
-  }
-  function save(key, val) {
-    localStorage.setItem(key, JSON.stringify(val));
-  }
+function createStatus(name) {
+  const seed = name.split('').reduce((a,c)=>a+c.charCodeAt(0),0);
+  return {
+    name,
+    hp: (seed * 13) % 10000 + 1,
+    atk: (seed * 17) % 9900 + 100,
+    def: (seed * 19) % 5000 + 1,
+    spd: (seed * 23) % 100 + 1
+  };
+}
 
-  function adminLogin() {
-    if (adminPass.value === ADMIN_PASSWORD) {
-      isAdmin = true;
-      alert('管理人モードON');
-      renderRanking();
-      renderStreakRanking();
-    } else alert('パスワードが違います');
-  }
+function battleRPG(pName, eName) {
+  let p = createStatus(pName);
+  let e = createStatus(eName);
+  let log = [];
+  let turn = 1;
 
-  function renderRanking() {
-    const ul = document.getElementById('ranking');
-    ul.innerHTML = '';
-    load('powerRank').forEach((r,i)=>{
-      const li = document.createElement('li');
-      li.innerHTML = `${i+1}位：${r.band} / ${r.user}（${r.power}）` + (isAdmin ? `<span class='del' onclick="delPower(${i})">[削除]</span>` : '');
-      ul.appendChild(li);
-    });
-  }
+  let first = p.spd >= e.spd ? p : e;
+  let second = first === p ? e : p;
 
-  function renderStreakRanking() {
-    const ul = document.getElementById('streakRank');
-    ul.innerHTML = '';
-    load('streakRank').forEach((r,i)=>{
-      const li = document.createElement('li');
-      li.innerHTML = `${i+1}位：${r.band} / ${r.user}（${r.streak}連勝）` + (isAdmin ? `<span class='del' onclick="delStreak(${i})">[削除]</span>` : '');
-      ul.appendChild(li);
-    });
-  }
+  log.push(`⚡ 素早さ判定：${first.name} が先制！`);
 
-  function delPower(i) { const l = load('powerRank'); l.splice(i,1); save('powerRank', l); renderRanking(); }
-  function delStreak(i) { const l = load('streakRank'); l.splice(i,1); save('streakRank', l); renderStreakRanking(); }
-
-  function checkAndSaveRecords() {
-    const bestPower = Number(localStorage.getItem('bestPower') || 0);
-    const bestStreak = Number(localStorage.getItem('bestStreak') || 0);
-    if (bestPower === 0 && bestStreak === 0) return;
-
-    const user = prompt('ランキング登録！ユーザーネームを入力');
-    if (!user) return;
-
-    if (bestPower > 0) {
-      let pr = load('powerRank');
-      pr.push({ band: localStorage.getItem('bestBand'), user, power: bestPower });
-      pr.sort((a,b)=>b.power-a.power);
-      save('powerRank', pr.slice(0,5));
-    }
-    if (bestStreak > 0) {
-      let sr = load('streakRank');
-      sr.push({ band: localStorage.getItem('bestBand'), user, streak: bestStreak });
-      sr.sort((a,b)=>b.streak-a.streak);
-      save('streakRank', sr.slice(0,5));
+  while (p.hp > 0 && e.hp > 0) {
+    if (turn > 5) {
+      log.push('⏩ 激戦が続いたため、勝負は一気に決着へ…');
+      break;
     }
 
-    localStorage.removeItem('bestPower');
-    localStorage.removeItem('bestStreak');
-    renderRanking();
-    renderStreakRanking();
+    let dmg1 = Math.max(1, first.atk - second.def);
+    second.hp -= dmg1;
+    log.push(`Turn ${turn}: ${first.name} の攻撃 → ${dmg1} ダメージ`);
+    if (second.hp <= 0) break;
+
+    let dmg2 = Math.max(1, second.atk - first.def);
+    first.hp -= dmg2;
+    log.push(`${second.name} の反撃 → ${dmg2} ダメージ`);
+
+    turn++;
   }
 
-  function battle() {
-    const p = player.value.trim();
-    const c = cpu.value.trim();
-    if (!p || !c) return;
+  let result;
+  if (p.hp === e.hp) result = '🤝 引き分け';
+  else if (p.hp > e.hp) result = `🏆 ${p.name} の勝利！`;
+  else result = `💀 ${p.name} の敗北…`;
 
-    const pPower = calcPower(p);
-    const cPower = calcPower(c);
-    let streak = Number(localStorage.getItem('streak') || 0);
+  const box = document.getElementById('result');
+  box.innerHTML = `<h3>結果</h3><pre>${log.join('
+')}</pre><br>${result}`;box.classList.remove('hidden'); }
 
-    let log = `🖤 ${p}\n戦闘力：${pPower}\n\n💀 ${c}\n戦闘力：${cPower}\n\n`;
+function battleManual() { const p = player.value.trim(); const e = enemy.value.trim(); if (!p || !e) return alert('名前を入力してね'); if (p === e) return alert('同名バトルはできません'); battleRPG(p, e); enemy.value = ''; }
 
-    if (p === c) {
-      log += '⚠️ 同名バンドのため記録対象外';
-    } else if (pPower > cPower) {
-      log += '🔥 勝利！';
-      streak++;
-      localStorage.setItem('streak', streak);
-      localStorage.setItem('bestPower', Math.max(pPower, Number(localStorage.getItem('bestPower')||0)));
-      localStorage.setItem('bestStreak', Math.max(streak, Number(localStorage.getItem('bestStreak')||0)));
-      localStorage.setItem('bestBand', p);
-    } else {
-      log += '💀 敗北…';
-      localStorage.setItem('streak', 0);
-      checkAndSaveRecords();
-    }
+async function battleCPU() { const p = playerCpu.value.trim(); if (!p) return alert('名前を入力してね'); const status = document.getElementById('cpuStatus'); status.textContent = '📡 Wikipedia接続中…';
 
-    document.getElementById('result').textContent = log;
-  }
+try { const url = 'https://ja.wikipedia.org/w/api.php?action=query&list=search&srsearch=ヴィジュアル系 バンド&format=json&origin=*'; const res = await fetch(url); const data = await res.json(); const list = data.query.search; const cpu = list[Math.floor(Math.random()*list.length)].title; status.textContent = 敵バンド出現！「${cpu}」; battleRPG(p, cpu); } catch { status.textContent = '❌ 取得失敗'; } } </script>
 
-  function retire() {
-    checkAndSaveRecords();
-    localStorage.setItem('streak', 0);
-    document.getElementById('result').textContent = '🏳️ リタイヤしました。記録を保存しました。';
-  }
-
-  renderRanking();
-  renderStreakRanking();
-</script></body>
+</body>
 </html>
